@@ -164,7 +164,6 @@ ArrestDB::Serve('GET', '/(#any)/(#any)?', function ($table, $id = null)
                 $query = array($myVar);
             }
         }
-        var_dump($query);
         
 	$query = sprintf('%s;', implode(' ', $query));
         // @author Deep Saurabh Singh
