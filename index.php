@@ -1,9 +1,11 @@
 <?php
 
-$dsn = '';
+$dsn = 'mysql://root:primod123@localhost:3306/sakila/';
 $clients = array
 (
 );
+// Addition for global access @author deep saurabh singh(PMI)
+$globalAccess = TRUE;
 
 /**
 * The MIT License
@@ -17,8 +19,8 @@ if (strcmp(PHP_SAPI, 'cli') === 0)
 {
 	exit('ArrestDB should not be run from CLI.' . PHP_EOL);
 }
-
-if ((empty($clients) !== true) && (in_array($_SERVER['REMOTE_ADDR'], (array) $clients) !== true))
+//|| (!$globalAccess) to make any user acess the database
+if (((empty($clients) !== true) && (in_array($_SERVER['REMOTE_ADDR'], (array) $clients) !== true)) || (!$globalAccess))
 {
 	$result = array
 	(
@@ -114,7 +116,7 @@ ArrestDB::Serve('GET', '/(#any)/(#any)/(#any)', function ($table, $id, $data)
 	return ArrestDB::Reply($result);
 });
 
-ArrestDB::Serve('GET', '/(#any)/(#num)?', function ($table, $id = null)
+ArrestDB::Serve('GET', '/(#any)/(#any)?', function ($table, $id = null)
 {
 	$query = array
 	(
@@ -122,8 +124,11 @@ ArrestDB::Serve('GET', '/(#any)/(#num)?', function ($table, $id = null)
 	);
 
 	if (isset($id) === true)
-	{
-		$query[] = sprintf('WHERE "%s" = ? LIMIT 1', 'id');
+	{       
+                // @author Deep Saurabh Singh
+                // modification for showing row if we give id list
+                $colName = $table . '_id';
+		$query[] = sprintf('WHERE "%s" = ? LIMIT 1', $colName);
 	}
 
 	else
@@ -148,10 +153,28 @@ ArrestDB::Serve('GET', '/(#any)/(#num)?', function ($table, $id = null)
 			}
 		}
 	}
-
+        // @author Deep Saurabh Singh
+        // modification for showing tables list
+        if ($table == 'describe') {
+            if($id == NULL){
+                $query = array("SHOW tables");
+            }else{
+                // modification for getting columns of table if we provide column name
+                $myVar = "DESCRIBE " . $id;
+                $query = array($myVar);
+            }
+        }
+        var_dump($query);
+        
 	$query = sprintf('%s;', implode(' ', $query));
-	$result = (isset($id) === true) ? ArrestDB::Query($query, $id) : ArrestDB::Query($query);
-
+        // @author Deep Saurabh Singh
+        // modification for getting columns of table if we provide table name
+        if (strpos($query, 'DESCRIBE') !== false) {
+         $result = ArrestDB::Query($query);
+        return ArrestDB::Reply($result);
+    } else {
+        $result = (isset($id) === true) ? ArrestDB::Query($query, $id) : ArrestDB::Query($query);
+    }
 	if ($result === false)
 	{
 		$result = array
@@ -477,6 +500,7 @@ class ArrestDB
 						case 'EXPLAIN':
 						case 'PRAGMA':
 						case 'SHOW':
+                                                case 'DESCRIBE':
 							return $result[$hash]->fetchAll();
 					}
 
